@@ -64,13 +64,8 @@ def start_scrapping(driver):
 
 def store_username(user, where):
     with open('usernames.txt','r+') as f:
-        # if len(f.readlines())>0:
-        #     f.seek(0)
         if user not in f.read():
             f.write(user + where)
-        # else:
-            # f.seek(0)
-            # f.write(user + where)
 
 if __name__ == '__main__':
     option = webdriver.ChromeOptions()
