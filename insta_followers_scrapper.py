@@ -1,24 +1,30 @@
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 from getpass import getpass
 from time import sleep
+import csv
 
 def login_choice(driver):
     try:
         f = open('usernames.txt','r+')
         usernames = [i.strip('\n') for i in f.readlines()]
+
         if len(usernames) >0 :
             print('List of previous users: ')
             count = 0
             for user in usernames:
                 print(f"{usernames.index(user)+1}. {user.split(' ')[0]}")
-            choose_username = input('Choose a number (If new user press Enter): ')
+            print()
+            choose_username = input('Choose a number if you are in the above list (If new user press Enter): ')
+
             if choose_username != '':
                 login(driver, usernames[int(choose_username)-1].split(' '))
             else:
                 login(driver)
         else:
             login(driver)
+
     except FileNotFoundError:
         f = open('usernames.txt','x')
         login(driver)
@@ -60,12 +66,72 @@ def login(driver, user_details = []):
     start_scrapping(driver)
 
 def start_scrapping(driver):
-    pass
+    driver.find_element_by_class_name('gmFkV').click()
+    sleep(2)
+
+    driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/header/section/ul/li[2]/a').click()
+    sleep(2)
+    
+    popup_body  = driver.find_element_by_xpath("//div[@class='isgrP']")
+
+    # Get scroll height.
+    last_height = driver.execute_script("return arguments[0].scrollHeight",popup_body)
+
+    while True:
+
+        # Scroll down to the bottom.
+        driver.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);",popup_body)
+        sleep(1)
+
+        # Calculate new scroll height and compare with last scroll height.
+        new_height = driver.execute_script("return arguments[0].scrollHeight",popup_body)
+
+        if new_height == last_height:
+            sleep(2)
+            break
+
+        last_height = new_height
+
+    page = driver.page_source
+    soup = BeautifulSoup(page, 'lxml')
+    driver.close()
+
+    li_tags_data =[i.text[:len(i.text)-6] for i in soup.find_all('li') if 'Remove' in i.text]
+    
+    store_followers_details(li_tags_data)
+    
+
 
 def store_username(user, where):
     with open('usernames.txt','r+') as f:
         if user not in f.read():
             f.write(user + where)
+
+
+def store_followers_details(list_followers):
+    
+    followers = []
+    try:
+        for i in list_followers:
+            if 'Follow' in i:
+               a =i.split('Follow')
+               a.append('Follow')
+               followers.append(a)
+            else:
+                followers.append(i.split(' ',1))
+        headers = ['Username', 'Name', 'Follow']
+        with open('followers.csv','w',encoding="utf-8") as f:
+            csv_writer = csv.writer(f)
+
+            csv_writer.writerow(headers)
+            csv_writer.writerows(followers)
+
+    except FileNotFoundError:
+        f = open('followers.csv','x')
+        f.close()
+        store_followers_details(list_followers)
+
+
 
 if __name__ == '__main__':
     option = webdriver.ChromeOptions()
