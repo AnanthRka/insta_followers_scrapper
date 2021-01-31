@@ -1,14 +1,19 @@
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from getpass import getpass
 from time import sleep
 import csv
+import sys
 
 def login_choice(driver):
     try:
         f = open('usernames.txt','r+')
         usernames = [i.strip('\n') for i in f.readlines()]
+        
+        driver.get('https://instagram.com')
+        driver.maximize_window()
 
         if len(usernames) >0 :
             print('List of previous users: ')
@@ -29,45 +34,71 @@ def login_choice(driver):
         f = open('usernames.txt','x')
         login(driver)
 
-def login(driver, user_details = []):
+def login(driver, user_details = [],login_method=False, retry = False,count =1):
     
-    login_method = False
-
-    driver.get('https://instagram.com')
-    driver.maximize_window()
-
     if user_details == []:    
-        method = input('Do you want to login through Facebook(y) or use Instagram(n)')
-        if method == 'y':
-            login_method = True
+        if not retry:
+            method = input('Do you want to login through Facebook(y) or use Instagram(n)')
+            if method == 'y':
+                login_method = True
         username = input('Enter Phone number, username, or email: ')
-        password = getpass('Enter password: ')
+        password = getpass(f'Enter password for {username}: ')
+    
     else :
-        if user_details[1] == 'f':
-            login_method = True
+        if not retry:
+            if user_details[1] == 'f':
+                login_method = True
         username = user_details[0]
         password = getpass(f'Enter password for {username}: ')
+    
+    try:
+        if not login_method:
 
-    if not login_method:
+            driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[1]/div/label/input').send_keys(username)
+            driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[2]/div/label/input').send_keys(password)
+            driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[3]/button/div').click()
+            store_username(username, ' i')
         
-        driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[1]/div/label/input').send_keys(username)
-        driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[2]/div/label/input').send_keys(password)
-        driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[3]/button/div').click()
-        store_username(username, ' i')
-    else:
-        driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[5]/button/span[2]').click()
-        sleep(2)
-        driver.find_element_by_xpath('//*[@id="email"]').send_keys(username)
-        driver.find_element_by_xpath('//*[@id="pass"]').send_keys(password)
-        driver.find_element_by_xpath('//*[@id="loginbutton"]').click()
-        store_username(username, ' f')
+        else:
 
-    sleep(8)
-    start_scrapping(driver)
+            if not retry:
+                driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[5]/button/span[2]').click()
+                sleep(2)
+            driver.find_element_by_xpath('//*[@id="email"]').send_keys(username)
+            driver.find_element_by_xpath('//*[@id="pass"]').send_keys(password)
+            driver.find_element_by_xpath('//*[@id="loginbutton"]').click()
+            store_username(username, ' f')
+        sleep(8)
+
+        if driver.current_url != 'https://www.instagram.com/':
+            driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div[2]/div/div/div/div/div[3]/button').click()
+            sleep(2)
+            driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/div/div/div[2]/button/div/div').click()
+            sleep(2)
+        driver.find_element_by_class_name('gmFkV').click()
+        sleep(2)
+
+        start_scrapping(driver)
+    
+    except NoSuchElementException:
+        count+=1
+        if count == 4:
+            print('You have made 3 unsuccessful login attempts, relax yourself and come again when you are sure.')
+            driver.quit()
+            sys.exit()
+        if count == 2:
+            print()
+            print('Two more login attempts remaining, choose wisely.')
+        print()
+        if user_details != []:
+            print('Incorrect password')
+        else:
+            print('Incorrect username or password')
+        
+        print()
+        login(driver,user_details, login_method, True, count )
 
 def start_scrapping(driver):
-    driver.find_element_by_class_name('gmFkV').click()
-    sleep(2)
 
     driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/header/section/ul/li[2]/a').click()
     sleep(2)
