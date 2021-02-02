@@ -7,6 +7,7 @@ from time import sleep
 import csv
 import sys
 
+# Displays previous users to choose and if not a previous user then proceeds to login
 def login_choice(driver):
     try:
         f = open('usernames.txt','r+')
@@ -34,6 +35,7 @@ def login_choice(driver):
         f = open('usernames.txt','x')
         login(driver)
 
+# Login can be made through facebook or instagram, username and login method will stored for further use
 def login(driver, user_details = [],login_method=False, retry = False,count =1):
     
     if user_details == []:    
@@ -98,6 +100,8 @@ def login(driver, user_details = [],login_method=False, retry = False,count =1):
         print()
         login(driver,user_details, login_method, True, count )
 
+
+#Scrolls through the list of followers and scrapes the available details
 def start_scrapping(driver):
 
     driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/header/section/ul/li[2]/a').click()
@@ -132,13 +136,13 @@ def start_scrapping(driver):
     store_followers_details(li_tags_data)
     
 
-
+# To store all the usernames for easy access
 def store_username(user, where):
     with open('usernames.txt','r+') as f:
         if user not in f.read():
             f.write(user + where)
 
-
+# To store all the followers in a csv file
 def store_followers_details(list_followers):
     
     followers = []
@@ -146,11 +150,11 @@ def store_followers_details(list_followers):
         for i in list_followers:
             if 'Follow' in i:
                a =i.split('Follow')
-               a.append('Follow')
+               a.append('No')
                followers.append(a)
             else:
                 followers.append(i.split(' ',1))
-        headers = ['Username', 'Name', 'Follow']
+        headers = ['Username', 'Name', 'Following']
         with open('followers.csv','w',encoding="utf-8") as f:
             csv_writer = csv.writer(f)
 
@@ -165,8 +169,9 @@ def store_followers_details(list_followers):
 
 
 if __name__ == '__main__':
+
     option = webdriver.ChromeOptions()
-    # option.add_argument('--headless')
+    option.add_argument('--headless')
     option.add_argument("--log-level=3")
     option.add_experimental_option('excludeSwitches', ['enable-logging'])
     prefs = {"profile.default_content_setting_values.notifications" : 2}
